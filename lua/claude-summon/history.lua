@@ -49,6 +49,30 @@ function M.export_markdown(path, lines)
 	return M.save(nil, lines)
 end
 
+function M.load(conversation_id)
+	local dir, err = ensure_dir()
+	if not dir then
+		vim.notify("claude-summon: " .. err, vim.log.levels.ERROR)
+		return nil
+	end
+	if not conversation_id or conversation_id == "" then
+		vim.notify("claude-summon: provide a conversation id (filename)", vim.log.levels.WARN)
+		return nil
+	end
+	local path = dir .. "/" .. conversation_id
+	local lines = {}
+	local fd = io.open(path, "r")
+	if not fd then
+		vim.notify("claude-summon: conversation not found: " .. conversation_id, vim.log.levels.WARN)
+		return nil
+	end
+	for line in fd:lines() do
+		table.insert(lines, line)
+	end
+	fd:close()
+	return lines
+end
+
 function M.list()
 	local dir, err = ensure_dir()
 	if not dir then
@@ -71,13 +95,42 @@ function M.list()
 	return items
 end
 
-function M.load(_conversation_id)
-	vim.notify("History load not implemented yet", vim.log.levels.INFO)
-	return nil
+function M.load(conversation_id)
+	local dir, err = ensure_dir()
+	if not dir then
+		vim.notify("claude-summon: " .. err, vim.log.levels.ERROR)
+		return nil
+	end
+	if not conversation_id or conversation_id == "" then
+		vim.notify("claude-summon: provide a conversation id (filename)", vim.log.levels.WARN)
+		return nil
+	end
+	local path = dir .. "/" .. conversation_id
+	local lines = {}
+	local fd = io.open(path, "r")
+	if not fd then
+		vim.notify("claude-summon: conversation not found: " .. conversation_id, vim.log.levels.WARN)
+		return nil
+	end
+	for line in fd:lines() do
+		table.insert(lines, line)
+	end
+	fd:close()
+	return lines
 end
 
-function M.delete(_conversation_id)
-	vim.notify("History delete not implemented yet", vim.log.levels.INFO)
+function M.delete(conversation_id)
+	local dir, err = ensure_dir()
+	if not dir then
+		vim.notify("claude-summon: " .. err, vim.log.levels.ERROR)
+		return
+	end
+	if not conversation_id or conversation_id == "" then
+		vim.notify("claude-summon: provide a conversation id (filename)", vim.log.levels.WARN)
+		return
+	end
+	local path = dir .. "/" .. conversation_id
+	os.remove(path)
 end
 
 return M

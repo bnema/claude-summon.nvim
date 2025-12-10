@@ -171,8 +171,31 @@ function M.yank_code()
 	vim.notify(("Yanked code block (%d lines)"):format(#block), vim.log.levels.INFO)
 end
 
+local function build_diff_buffer(block)
+	local current_buf = vim.api.nvim_get_current_buf()
+	local cursor = vim.api.nvim_win_get_cursor(0)[1]
+	local context_lines = vim.api.nvim_buf_get_lines(current_buf, cursor - 1, cursor - 1 + #block, false)
+	local scratch = vim.api.nvim_create_buf(false, true)
+	vim.api.nvim_buf_set_lines(scratch, 0, -1, false, block)
+	vim.bo[scratch].filetype = vim.bo[current_buf].filetype
+	return scratch, context_lines
+end
+
 function M.diff_code()
-	vim.notify("Diff preview not implemented yet", vim.log.levels.INFO)
+	local block = last_code_block()
+	if not block or #block == 0 then
+		vim.notify("No code block found to diff", vim.log.levels.WARN)
+		return
+	end
+
+	local scratch = build_diff_buffer(block)
+	vim.cmd("tabnew")
+	local win = vim.api.nvim_get_current_win()
+	vim.api.nvim_win_set_buf(win, scratch)
+	vim.cmd("diffthis")
+	vim.cmd("wincmd p")
+	vim.cmd("diffthis")
+	vim.notify("Opened diff view with code block", vim.log.levels.INFO)
 end
 
 function M.save()
