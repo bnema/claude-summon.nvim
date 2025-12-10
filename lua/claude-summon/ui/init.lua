@@ -2,6 +2,7 @@
 
 local panel = require("claude-summon.ui.panel")
 local render = require("claude-summon.ui.render")
+local actions = require("claude-summon.ui.actions")
 local context = require("claude-summon.context")
 local chat = require("claude-summon.chat")
 local history = require("claude-summon.history")
@@ -96,15 +97,15 @@ function M.clear()
 end
 
 function M.apply_code()
-	render.apply_code()
+	actions.apply_code()
 end
 
 function M.yank_code()
-	render.yank_code()
+	actions.yank_code()
 end
 
 function M.diff_code()
-	render.diff_code()
+	actions.diff_code()
 end
 
 function M.save()
