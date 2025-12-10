@@ -151,6 +151,12 @@ function M.response_buf()
 	return state.response_buf
 end
 
+function M.set_response(lines)
+	if state.response_buf and vim.api.nvim_buf_is_valid(state.response_buf) then
+		vim.api.nvim_buf_set_lines(state.response_buf, 0, -1, false, lines or {})
+	end
+end
+
 function M.set_submit(fn)
 	state.on_submit = fn
 end

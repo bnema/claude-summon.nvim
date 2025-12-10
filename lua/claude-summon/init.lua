@@ -127,4 +127,9 @@ function M.export_markdown()
 	ui.export()
 end
 
+function M.history()
+	ensure_setup()
+	ui.history(require("claude-summon.history").list())
+end
+
 return M

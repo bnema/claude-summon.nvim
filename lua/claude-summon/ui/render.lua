@@ -224,4 +224,13 @@ function M.export()
 	end
 end
 
+function M.load_history(lines)
+	if not lines or #lines == 0 then
+		return
+	end
+	stop_spinner()
+	state.pending_line = ""
+	panel.set_response(lines)
+end
+
 return M
