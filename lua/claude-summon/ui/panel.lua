@@ -42,7 +42,6 @@ local function response_config()
 		split = position,
 		win = 0,
 		width = width,
-		title_pos = "center",
 	}
 end
 
