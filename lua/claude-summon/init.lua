@@ -107,6 +107,16 @@ function M.apply_code()
 	ui.apply_code()
 end
 
+function M.yank_code()
+	ensure_setup()
+	ui.yank_code()
+end
+
+function M.diff_code()
+	ensure_setup()
+	ui.diff_code()
+end
+
 function M.save_conversation()
 	ensure_setup()
 	ui.save()

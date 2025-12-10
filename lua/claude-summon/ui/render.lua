@@ -160,6 +160,21 @@ function M.apply_code()
 	vim.notify(("Inserted code block (%d lines)"):format(#block), vim.log.levels.INFO)
 end
 
+function M.yank_code()
+	local block = last_code_block()
+	if not block or #block == 0 then
+		vim.notify("No code block found to yank", vim.log.levels.WARN)
+		return
+	end
+	vim.fn.setreg('"', table.concat(block, "\n"))
+	vim.fn.setreg("+", table.concat(block, "\n"))
+	vim.notify(("Yanked code block (%d lines)"):format(#block), vim.log.levels.INFO)
+end
+
+function M.diff_code()
+	vim.notify("Diff preview not implemented yet", vim.log.levels.INFO)
+end
+
 function M.save()
 	local buf = panel.response_buf()
 	if not buf or not vim.api.nvim_buf_is_valid(buf) then

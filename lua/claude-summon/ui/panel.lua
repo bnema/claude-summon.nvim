@@ -9,6 +9,7 @@ local state = {
 	input_buf = nil,
 	response_win = nil,
 	input_win = nil,
+	on_submit = nil,
 }
 
 local function ensure_buffers()
@@ -78,6 +79,16 @@ local function open_windows(model)
 	local input_conf = input_config()
 	if input_conf then
 		state.input_win = vim.api.nvim_open_win(state.input_buf, false, input_conf)
+		vim.fn.prompt_setprompt(state.input_buf, "> ")
+		vim.fn.prompt_setcallback(state.input_buf, function(line)
+			if state.on_submit then
+				state.on_submit(line)
+			end
+			vim.api.nvim_buf_set_lines(state.input_buf, 0, -1, false, {})
+		end)
+		vim.keymap.set("n", "q", function()
+			M.close()
+		end, { buffer = state.response_buf, silent = true })
 	end
 end
 
@@ -115,6 +126,10 @@ function M.append(lines)
 		return
 	end
 	vim.api.nvim_buf_set_lines(state.response_buf, -1, -1, false, lines)
+	if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
+		local last = vim.api.nvim_buf_line_count(state.response_buf)
+		vim.api.nvim_win_set_cursor(state.response_win, { last, 0 })
+	end
 end
 
 function M.clear_response()
@@ -134,6 +149,16 @@ end
 
 function M.response_buf()
 	return state.response_buf
+end
+
+function M.set_submit(fn)
+	state.on_submit = fn
+end
+
+function M.focus_input()
+	if state.input_win and vim.api.nvim_win_is_valid(state.input_win) then
+		vim.api.nvim_set_current_win(state.input_win)
+	end
 end
 
 return M

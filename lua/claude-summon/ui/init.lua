@@ -13,6 +13,9 @@ function M.setup(cfg)
 	state.config = cfg
 	panel.setup(cfg)
 	render.setup(cfg)
+	panel.set_submit(function(_line)
+		vim.notify("Input sending not implemented yet", vim.log.levels.INFO)
+	end)
 end
 
 function M.open(model)
@@ -63,6 +66,14 @@ end
 
 function M.apply_code()
 	render.apply_code()
+end
+
+function M.yank_code()
+	render.yank_code()
+end
+
+function M.diff_code()
+	render.diff_code()
 end
 
 function M.save()
