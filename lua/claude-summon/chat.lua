@@ -15,9 +15,16 @@ local function ensure_sdk_path(path)
 		return
 	end
 
-	local lua_path = vim.fn.expand(path .. "/lua/?.lua")
-	if not string.find(package.path, lua_path, 1, true) then
-		package.path = package.path .. ";" .. lua_path
+	local base = vim.fn.expand(path)
+	local lua_paths = {
+		base .. "/lua/?.lua",
+		base .. "/lua/?/init.lua",
+	}
+
+	for _, lua_path in ipairs(lua_paths) do
+		if not string.find(package.path, lua_path, 1, true) then
+			package.path = package.path .. ";" .. lua_path
+		end
 	end
 end
 
