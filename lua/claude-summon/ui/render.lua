@@ -62,7 +62,11 @@ function M.on_thinking(msg)
 end
 
 local function extract_text(msg)
-	return msg.delta or msg.text or msg.message or msg.content or msg.result or ""
+	local raw = msg.delta or msg.text or msg.message or msg.content or msg.result or ""
+	if type(raw) == "table" then
+		return table.concat(raw, "")
+	end
+	return raw
 end
 
 local function append_text(chunk)
