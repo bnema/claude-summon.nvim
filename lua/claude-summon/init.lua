@@ -5,6 +5,7 @@ local trigger = require("claude-summon.trigger")
 local context = require("claude-summon.context")
 local chat = require("claude-summon.chat")
 local ui = require("claude-summon.ui")
+local keymaps = require("claude-summon.keymaps")
 
 local M = {}
 local state = {
@@ -29,6 +30,7 @@ function M.setup(opts)
 	state.config = config.merge(opts)
 	chat.setup(state.config)
 	ui.setup(state.config)
+	keymaps.setup(state.config, M)
 	return state.config
 end
 

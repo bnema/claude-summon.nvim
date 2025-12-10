@@ -1,6 +1,7 @@
 -- luacheck: globals vim
 
 local uv = vim.loop
+local panel = require("claude-summon.ui.panel")
 
 local M = {}
 
@@ -19,6 +20,7 @@ local function stop_spinner()
 	end
 	state.timer = nil
 	state.spinner_idx = 1
+	panel.set_footer(nil)
 end
 
 local function render_status()
@@ -26,7 +28,7 @@ local function render_status()
 	local spin = state.spinner[state.spinner_idx] or state.spinner[1]
 	local msg = state.thinking ~= "" and (" · " .. state.thinking) or ""
 	local text = prefix .. spin .. msg
-	vim.api.nvim_echo({ { text, "Comment" } }, false, {})
+	panel.set_footer(text)
 end
 
 local function start_spinner()
@@ -47,6 +49,7 @@ function M.setup(_cfg) end
 function M.start_stream(payload)
 	state.model = payload.model or "claude"
 	state.thinking = ""
+	panel.clear_response()
 	start_spinner()
 end
 
@@ -55,10 +58,18 @@ function M.on_thinking(msg)
 	render_status()
 end
 
-function M.on_message(_msg)
+local function extract_text(msg)
+	return msg.delta or msg.text or msg.message or msg.content or msg.result or ""
+end
+
+function M.on_message(msg)
 	-- First real message ends the thinking phase.
 	stop_spinner()
-	vim.api.nvim_echo({}, false, {})
+	local text = extract_text(msg)
+	if text == "" then
+		return
+	end
+	panel.append(vim.split(text, "\n", { plain = true }))
 end
 
 function M.on_error(err)
@@ -77,6 +88,7 @@ end
 
 function M.clear()
 	stop_spinner()
+	panel.clear_response()
 end
 
 function M.apply_code() end
