@@ -29,6 +29,10 @@ function M.setup(cfg, api)
 	map(keys.open, api.open, "Claude open")
 	map(keys.close, api.close, "Claude close")
 	map(keys.toggle, api.toggle, "Claude toggle")
+	map(keys.diff, api.diff_code, "Claude diff last code block")
+	map(keys.yank, api.yank_code, "Claude yank last code block")
+	map(keys.apply, api.apply_code, "Claude apply last code block")
+	map(keys.preview, api.preview_code, "Claude preview last code block")
 end
 
 return M

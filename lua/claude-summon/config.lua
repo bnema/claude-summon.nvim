@@ -45,6 +45,10 @@ M.defaults = {
 		open = "<leader>ao",
 		close = "<leader>ac",
 		toggle = "<leader>at",
+		diff = "<leader>ad",
+		yank = "<leader>ay",
+		apply = "<leader>aa",
+		preview = "<leader>ap",
 	},
 
 	-- Persistence

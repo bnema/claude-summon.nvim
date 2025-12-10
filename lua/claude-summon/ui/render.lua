@@ -99,6 +99,10 @@ function M.on_complete()
 		panel.append({ state.pending_line })
 		state.pending_line = ""
 	end
+
+	if panel.response_buf() then
+		panel.set_footer("Press <leader>aa apply · <leader>ay yank · <leader>ad diff · <leader>ap preview")
+	end
 end
 
 function M.on_stop()
