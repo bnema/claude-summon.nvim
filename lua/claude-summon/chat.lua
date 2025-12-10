@@ -133,8 +133,8 @@ function M.reset_session()
 	state.session_id = nil
 end
 
-function M.resume(session_id)
-	state.session_id = session_id
+function M.current_session()
+	return state.session_id
 end
 
 function M.resume(session_id)
@@ -147,10 +147,15 @@ function M.send(payload)
 		error("claude-summon.chat: client not initialized; call setup()")
 	end
 
+	local user_message = vim.trim(payload.message or "")
+	if user_message == "" then
+		vim.notify("claude-summon: cannot send an empty message", vim.log.levels.WARN)
+		return
+	end
+
 	M.stop()
 
-	local message = payload.message or ""
-	local prompt = build_prompt(message, payload.context)
+	local prompt = build_prompt(user_message, payload.context)
 	local model_alias = payload.model or state.model
 
 	local opts = { model_alias = model_alias }

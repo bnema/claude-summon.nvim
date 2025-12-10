@@ -18,18 +18,26 @@ function M.setup(cfg)
 	panel.setup(cfg)
 	render.setup(cfg)
 	panel.set_submit(function(line)
-		if not line or line == "" then
+		local trimmed = vim.trim(line or "")
+		if trimmed == "" then
 			return
 		end
 
 		local ctx = context.build_context({ context_lines = cfg.context_lines })
 		local model_alias = chat.current_model()
+		local has_session = chat.current_session() ~= nil
 
 		M.open(model_alias)
-		M.start_stream({ model = model_alias, message = line, context = ctx })
+
+		-- Continue existing conversation or start new one
+		if has_session then
+			M.continue_stream({ model = model_alias, message = trimmed, context = ctx })
+		else
+			M.start_stream({ model = model_alias, message = trimmed, context = ctx })
+		end
 
 		chat.send({
-			message = line,
+			message = trimmed,
 			context = ctx,
 			model = model_alias,
 			callbacks = {
@@ -72,6 +80,10 @@ function M.start_stream(payload)
 	render.start_stream(payload)
 end
 
+function M.continue_stream(payload)
+	render.continue_stream(payload)
+end
+
 function M.on_message(msg)
 	render.on_message(msg)
 end
@@ -93,6 +105,7 @@ function M.on_stop()
 end
 
 function M.clear()
+	chat.reset_session() -- Start fresh conversation
 	render.clear()
 end
 

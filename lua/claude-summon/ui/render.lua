@@ -6,13 +6,55 @@ local history = require("claude-summon.history")
 
 local M = {}
 
+-- Nerd Font icons (requires a Nerd Font patched terminal font)
+local icons = {
+	tool = "\u{f0ad}", -- nf-fa-wrench
+	bash = "\u{f489}", -- nf-oct-terminal
+	read = "\u{f15c}", -- nf-fa-file_text
+	write = "\u{f0c7}", -- nf-fa-save
+	edit = "\u{f044}", -- nf-fa-pencil_square_o
+	glob = "\u{f002}", -- nf-fa-search
+	grep = "\u{f0b0}", -- nf-fa-filter
+	result = "\u{f061}", -- nf-fa-arrow_right
+	success = "\u{f00c}", -- nf-fa-check
+	error = "\u{f00d}", -- nf-fa-times
+	thinking = "\u{f110}", -- nf-fa-spinner
+	code = "\u{f121}", -- nf-fa-code
+	folder = "\u{f07b}", -- nf-fa-folder
+	file = "\u{f15b}", -- nf-fa-file
+}
+
+-- Map tool names to icons (fallback to icons.tool for unknown)
+local tool_icons = {
+	Bash = icons.bash,
+	Read = icons.read,
+	Write = icons.write,
+	Edit = icons.edit,
+	Glob = icons.glob,
+	Grep = icons.grep,
+	LS = icons.folder,
+	Task = "\u{f0ae}", -- nf-fa-tasks
+	TodoWrite = "\u{f0ae}", -- nf-fa-tasks
+	WebFetch = "\u{f0ac}", -- nf-fa-globe
+	WebSearch = "\u{f002}", -- nf-fa-search
+	NotebookEdit = "\u{f02d}", -- nf-fa-book
+	NotebookRead = "\u{f02d}", -- nf-fa-book
+	AskUser = "\u{f128}", -- nf-fa-question
+	AskUserQuestion = "\u{f128}", -- nf-fa-question
+	AgentOutputTool = "\u{f085}", -- nf-fa-cogs
+	KillShell = "\u{f00d}", -- nf-fa-times
+	BashOutput = icons.bash,
+}
+
 local state = {
 	model = "claude",
 	thinking = "",
 	spinner_idx = 1,
-	spinner = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
+	spinner = { "\u{28cb}", "\u{28d9}", "\u{28f9}", "\u{28f8}", "\u{28fc}", "\u{28f4}", "\u{28e6}", "\u{28e7}", "\u{28c7}", "\u{28cf}" },
 	timer = nil,
 	pending_line = "",
+	last_tool_id = nil,
+	streamed_message_ids = {}, -- Track messages we've already streamed via deltas
 }
 
 local function stop_spinner()
@@ -52,7 +94,30 @@ function M.start_stream(payload)
 	state.model = payload.model or "claude"
 	state.thinking = ""
 	state.pending_line = ""
-	panel.clear_response()
+	state.streamed_message_ids = {} -- Reset tracking for new stream
+	panel.set_response({
+		"> " .. (payload.message or ""),
+		"",
+		"Claude:",
+	})
+	start_spinner()
+end
+
+-- Continue an existing conversation (append instead of reset)
+function M.continue_stream(payload)
+	state.model = payload.model or state.model
+	state.thinking = ""
+	state.pending_line = ""
+	state.streamed_message_ids = {} -- Reset tracking for new response
+	-- Append separator and new user message
+	panel.append({
+		"",
+		string.rep("\u{2500}", 40), -- horizontal line separator
+		"",
+		"> " .. (payload.message or ""),
+		"",
+		"Claude:",
+	})
 	start_spinner()
 end
 
@@ -61,12 +126,184 @@ function M.on_thinking(msg)
 	render_status()
 end
 
-local function extract_text(msg)
-	local raw = msg.delta or msg.text or msg.message or msg.content or msg.result or ""
-	if type(raw) == "table" then
-		return table.concat(raw, "")
+-- Extract text from nested content structures
+local function normalize_text(value)
+	if type(value) == "string" then
+		return value
 	end
-	return raw
+	if type(value) ~= "table" then
+		return nil
+	end
+	if type(value.text) == "string" then
+		return value.text
+	end
+	local buf = {}
+	for _, v in ipairs(value) do
+		local piece = normalize_text(v)
+		if piece and piece ~= "" then
+			table.insert(buf, piece)
+		end
+	end
+	if #buf > 0 then
+		return table.concat(buf, "")
+	end
+	return nil
+end
+
+-- Format tool_use message
+local function format_tool_use(block)
+	local name = block.name or "Tool"
+	local icon = tool_icons[name] or icons.tool
+	local input = block.input or {}
+
+	local summary = ""
+	if name == "Bash" and input.command then
+		summary = input.command
+	elseif name == "Read" and input.file_path then
+		summary = input.file_path
+	elseif name == "Write" and input.file_path then
+		summary = input.file_path
+	elseif name == "Edit" and input.file_path then
+		summary = input.file_path
+	elseif name == "Glob" and input.pattern then
+		summary = input.pattern
+	elseif name == "Grep" and input.pattern then
+		summary = input.pattern
+	elseif input.description then
+		summary = input.description
+	end
+
+	if summary ~= "" then
+		return string.format("\n%s %s: %s", icon, name, summary)
+	end
+	return string.format("\n%s %s", icon, name)
+end
+
+-- Format tool_result message
+local function format_tool_result(block)
+	local content = block.content or ""
+	local is_error = block.is_error
+
+	if type(content) == "table" then
+		content = normalize_text(content) or vim.inspect(content)
+	end
+
+	-- Truncate long results
+	local max_len = 500
+	if #content > max_len then
+		content = content:sub(1, max_len) .. "\n... (truncated)"
+	end
+
+	local icon = is_error and icons.error or icons.result
+	if content == "" then
+		return string.format("  %s (empty)", icon)
+	end
+
+	-- Indent result lines
+	local lines = vim.split(content, "\n", { plain = true })
+	local indented = {}
+	for i, line in ipairs(lines) do
+		if i == 1 then
+			table.insert(indented, string.format("  %s %s", icon, line))
+		else
+			table.insert(indented, "    " .. line)
+		end
+	end
+	return table.concat(indented, "\n")
+end
+
+-- Format a message block based on its type
+local function format_block(block)
+	local block_type = block.type
+	if block_type == "text" then
+		return block.text or ""
+	elseif block_type == "tool_use" then
+		state.last_tool_id = block.id
+		return format_tool_use(block)
+	elseif block_type == "tool_result" then
+		return format_tool_result(block)
+	end
+	return ""
+end
+
+-- Main message formatter
+local function format_message(msg)
+	-- Handle stream_event for real-time text deltas (Python SDK format)
+	if msg.type == "stream_event" then
+		local event = msg.event
+		if event then
+			local event_type = event.type
+			-- Track message ID so we can skip the final complete message
+			if event_type == "message_start" and event.message then
+				local msg_id = event.message.id
+				if msg_id then
+					state.streamed_message_ids[msg_id] = true
+				end
+			end
+			if event_type == "content_block_delta" then
+				local delta = event.delta
+				if delta and delta.type == "text_delta" then
+					return delta.text or ""
+				end
+			end
+			-- Skip other stream_event types (content_block_start, message_stop, etc.)
+		end
+		return ""
+	end
+
+	-- Skip assistant messages if we already streamed their content
+	local msg_id = msg.id or (msg.message and msg.message.id)
+	if msg_id and state.streamed_message_ids[msg_id] then
+		return ""
+	end
+
+	-- Handle delta/partial streaming updates
+	if msg.delta then
+		local delta = msg.delta
+		if type(delta) == "string" then
+			return delta
+		end
+		if type(delta) == "table" and delta.text then
+			return delta.text
+		end
+	end
+
+	if msg.partial then
+		local partial = msg.partial
+		if type(partial) == "string" then
+			return partial
+		end
+		if type(partial) == "table" and partial.text then
+			return partial.text
+		end
+	end
+
+	-- Handle content array (can contain text, tool_use, tool_result blocks)
+	local content = msg.content
+	if type(content) == "table" then
+		local parts = {}
+		for _, block in ipairs(content) do
+			if type(block) == "table" then
+				local formatted = format_block(block)
+				if formatted and formatted ~= "" then
+					table.insert(parts, formatted)
+				end
+			elseif type(block) == "string" then
+				table.insert(parts, block)
+			end
+		end
+		if #parts > 0 then
+			return table.concat(parts, "")
+		end
+	end
+
+	-- Fallback to simple text fields
+	local raw = msg.text or msg.message or msg.result
+	if raw then
+		return normalize_text(raw) or ""
+	end
+
+	return ""
 end
 
 local function append_text(chunk)
@@ -76,15 +313,21 @@ local function append_text(chunk)
 	local combined = state.pending_line .. chunk
 	local parts = vim.split(combined, "\n", { plain = true })
 	state.pending_line = table.remove(parts) or ""
+
 	if #parts > 0 then
 		panel.append(parts)
+	end
+
+	if state.pending_line ~= "" then
+		-- Show partial line progress by updating the last line in the buffer.
+		panel.update_last_line(state.pending_line)
 	end
 end
 
 function M.on_message(msg)
 	-- First real message ends the thinking phase.
 	stop_spinner()
-	local text = extract_text(msg)
+	local text = format_message(msg)
 	if text == "" then
 		return
 	end
@@ -117,6 +360,7 @@ end
 function M.clear()
 	stop_spinner()
 	state.pending_line = ""
+	state.streamed_message_ids = {}
 	panel.clear_response()
 end
 

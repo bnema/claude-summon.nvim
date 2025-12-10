@@ -123,14 +123,16 @@ function M.model()
 end
 
 function M.append(lines)
-	if not state.response_buf or not vim.api.nvim_buf_is_valid(state.response_buf) then
-		return
-	end
-	vim.api.nvim_buf_set_lines(state.response_buf, -1, -1, false, lines)
-	if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
-		local last = vim.api.nvim_buf_line_count(state.response_buf)
-		vim.api.nvim_win_set_cursor(state.response_win, { last, 0 })
-	end
+	vim.schedule(function()
+		if not state.response_buf or not vim.api.nvim_buf_is_valid(state.response_buf) then
+			return
+		end
+		vim.api.nvim_buf_set_lines(state.response_buf, -1, -1, false, lines)
+		if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
+			local last = vim.api.nvim_buf_line_count(state.response_buf)
+			vim.api.nvim_win_set_cursor(state.response_win, { last, 0 })
+		end
+	end)
 end
 
 function M.clear_response()
@@ -162,6 +164,24 @@ end
 
 function M.response_buf()
 	return state.response_buf
+end
+
+---Replace the last line in the response buffer with updated text (for streaming).
+function M.update_last_line(text)
+	if not state.response_buf then
+		return
+	end
+	vim.schedule(function()
+		if not vim.api.nvim_buf_is_valid(state.response_buf) then
+			return
+		end
+		local total = vim.api.nvim_buf_line_count(state.response_buf)
+		local target = math.max(total - 1, 0)
+		vim.api.nvim_buf_set_lines(state.response_buf, target, target + 1, false, { text })
+		if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
+			vim.api.nvim_win_set_cursor(state.response_win, { total, 0 })
+		end
+	end)
 end
 
 function M.set_response(lines)
