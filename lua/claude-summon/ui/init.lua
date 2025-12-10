@@ -4,6 +4,7 @@ local panel = require("claude-summon.ui.panel")
 local render = require("claude-summon.ui.render")
 local context = require("claude-summon.context")
 local chat = require("claude-summon.chat")
+local history = require("claude-summon.history")
 
 local M = {}
 local state = {
@@ -115,14 +116,43 @@ function M.export()
 end
 
 function M.history()
-	vim.ui.input({ prompt = "Enter Claude session id to resume: " }, function(session_id)
-		if not session_id or session_id == "" then
+	history.list_claude_sessions(function(sessions, err)
+		if err then
+			local message = err.message or err.desc or tostring(err)
+			vim.notify("claude-summon: " .. message, vim.log.levels.ERROR)
 			return
 		end
-		chat.resume(session_id)
-		M.open(chat.current_model())
-		render.load_history({ "# Continuing session " .. session_id, "" })
-		vim.notify("Resuming Claude session " .. session_id, vim.log.levels.INFO)
+
+		if not sessions or #sessions == 0 then
+			vim.notify("No Claude sessions found for this project", vim.log.levels.INFO)
+			return
+		end
+
+		local function format_entry(entry)
+			local summary = entry.summary or entry.display or entry.session_id
+			if entry.timestamp then
+				local ts = os.date("%Y-%m-%d %H:%M", entry.timestamp / 1000)
+				return string.format("%s — %s (%s)", summary, entry.session_id, ts)
+			end
+			return string.format("%s — %s", summary, entry.session_id)
+		end
+
+		vim.ui.select(sessions, {
+			prompt = "Select Claude session to resume",
+			format_item = format_entry,
+		}, function(choice)
+			if not choice then
+				return
+			end
+			chat.resume(choice.session_id)
+			M.open(chat.current_model())
+			render.load_history({
+				"# Continuing session " .. choice.session_id,
+				choice.summary or choice.display or "",
+				"",
+			})
+			vim.notify("Resuming Claude session " .. choice.session_id, vim.log.levels.INFO)
+		end)
 	end)
 end
 

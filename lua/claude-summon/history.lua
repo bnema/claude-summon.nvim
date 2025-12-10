@@ -5,6 +5,7 @@ local state = {
 	dir = nil,
 	project_root = nil,
 }
+local claude_history = nil
 
 local function ensure_dir()
 	if not state.dir or state.dir == "" then
@@ -17,6 +18,11 @@ end
 function M.setup(cfg)
 	state.dir = cfg.history_dir
 	state.project_root = cfg.project_root
+	-- chat.setup already added the SDK to package.path
+	local ok, history_mod = pcall(require, "claude-code.history")
+	if ok then
+		claude_history = history_mod
+	end
 end
 
 local function default_name()
@@ -133,6 +139,26 @@ function M.delete(conversation_id)
 	end
 	local path = dir .. "/" .. conversation_id
 	os.remove(path)
+end
+
+---List Claude sessions for the current project using the SDK history helper.
+---@param callback fun(sessions: table[]|nil, err: table|nil)
+function M.list_claude_sessions(callback)
+	if not claude_history then
+		callback(nil, {
+			message = "Claude history module unavailable (is claude-code installed?)",
+		})
+		return
+	end
+
+	local project = state.project_root or vim.fn.getcwd()
+	claude_history.list_sessions_async({ project = project }, function(sessions, err)
+		if err then
+			callback(nil, err)
+			return
+		end
+		callback(sessions or {}, nil)
+	end)
 end
 
 return M
