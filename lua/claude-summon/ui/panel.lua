@@ -85,6 +85,8 @@ local function open_windows(model)
 			end
 			vim.api.nvim_buf_set_lines(state.input_buf, 0, -1, false, {})
 		end)
+		-- Focus the input so users can start typing immediately.
+		vim.api.nvim_set_current_win(state.input_win)
 		vim.keymap.set("n", "q", function()
 			M.close()
 		end, { buffer = state.response_buf, silent = true })
