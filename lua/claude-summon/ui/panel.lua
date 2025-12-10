@@ -140,22 +140,24 @@ function M.clear_response()
 end
 
 function M.set_footer(text)
-	if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
-		local footer = text and { { " " .. text .. " ", "FloatFooter" } } or nil
-		if footer then
-			local ok = pcall(vim.api.nvim_win_set_config, state.response_win, {
-				footer = footer,
-				footer_pos = "center",
-			})
-			if not ok then
-				-- Some window types (e.g., splits) do not support footer; fall back to statusline.
-				pcall(vim.api.nvim_win_set_option, state.response_win, "statusline", text)
+	vim.schedule(function()
+		if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
+			local footer = text and { { " " .. text .. " ", "FloatFooter" } } or nil
+			if footer then
+				local ok = pcall(vim.api.nvim_win_set_config, state.response_win, {
+					footer = footer,
+					footer_pos = "center",
+				})
+				if not ok then
+					-- Some window types (e.g., splits) do not support footer; fall back to statusline.
+					pcall(vim.api.nvim_win_set_option, state.response_win, "statusline", text)
+				end
+			else
+				pcall(vim.api.nvim_win_set_config, state.response_win, { footer = nil })
+				pcall(vim.api.nvim_win_set_option, state.response_win, "statusline", "")
 			end
-		else
-			pcall(vim.api.nvim_win_set_config, state.response_win, { footer = nil })
-			pcall(vim.api.nvim_win_set_option, state.response_win, "statusline", "")
 		end
-	end
+	end)
 end
 
 function M.response_buf()
