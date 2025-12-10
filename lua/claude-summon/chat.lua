@@ -150,6 +150,11 @@ function M.send(payload)
 		if msg.session_id then
 			state.session_id = msg.session_id
 		end
+		local thinking = msg.type == "thinking" or msg.phase == "thinking" or msg.stage == "thinking" or msg.thinking
+		if thinking and payload.callbacks and payload.callbacks.on_thinking then
+			payload.callbacks.on_thinking(msg)
+			return
+		end
 		if payload.callbacks and payload.callbacks.on_message then
 			payload.callbacks.on_message(msg)
 		end

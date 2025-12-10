@@ -41,6 +41,10 @@ function M.on_message(msg)
 	render.on_message(msg)
 end
 
+function M.on_thinking(msg)
+	render.on_thinking(msg)
+end
+
 function M.on_error(err)
 	render.on_error(err)
 end

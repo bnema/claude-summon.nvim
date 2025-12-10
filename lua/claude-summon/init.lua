@@ -55,6 +55,9 @@ function M.send()
 		context = ctx,
 		model = model_alias,
 		callbacks = {
+			on_thinking = function(msg)
+				ui.on_thinking(msg)
+			end,
 			on_message = function(msg)
 				ui.on_message(msg)
 			end,
