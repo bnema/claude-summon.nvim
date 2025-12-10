@@ -139,10 +139,12 @@ end
 
 function M.set_footer(text)
 	if state.response_win and vim.api.nvim_win_is_valid(state.response_win) then
-		vim.api.nvim_win_set_config(state.response_win, {
-			footer = text and { { " " .. text .. " ", "FloatFooter" } } or nil,
-			footer_pos = "center",
-		})
+		local footer = text and { { " " .. text .. " ", "FloatFooter" } } or nil
+		local cfg = { footer = footer }
+		if footer then
+			cfg.footer_pos = "center"
+		end
+		vim.api.nvim_win_set_config(state.response_win, cfg)
 	end
 end
 
