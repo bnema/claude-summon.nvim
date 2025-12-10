@@ -126,6 +126,14 @@ function M.reset_session()
 	state.session_id = nil
 end
 
+function M.resume(session_id)
+	state.session_id = session_id
+end
+
+function M.resume(session_id)
+	state.session_id = session_id
+end
+
 ---@param payload { message: string, context?: table, model?: string, callbacks?: table }
 function M.send(payload)
 	if not state.client then
@@ -139,7 +147,12 @@ function M.send(payload)
 	local model_alias = payload.model or state.model
 
 	local opts = { model_alias = model_alias }
-	if state.session_id then
+	if payload.continue then
+		opts.continue = true
+		opts.resume_id = nil
+	elseif payload.resume_id then
+		opts.resume_id = payload.resume_id
+	elseif state.session_id then
 		opts.resume_id = state.session_id
 	end
 	if state.plugin_manager then

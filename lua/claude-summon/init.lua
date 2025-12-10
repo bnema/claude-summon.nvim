@@ -129,7 +129,7 @@ end
 
 function M.history()
 	ensure_setup()
-	ui.history(require("claude-summon.history").list())
+	ui.history()
 end
 
 return M

@@ -3,6 +3,7 @@
 local M = {}
 local state = {
 	dir = nil,
+	project_root = nil,
 }
 
 local function ensure_dir()
@@ -15,6 +16,7 @@ end
 
 function M.setup(cfg)
 	state.dir = cfg.history_dir
+	state.project_root = cfg.project_root
 end
 
 local function default_name()

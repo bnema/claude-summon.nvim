@@ -114,21 +114,15 @@ function M.export()
 	render.export()
 end
 
-function M.history(list)
-	if not list or #list == 0 then
-		vim.notify("No saved conversations", vim.log.levels.INFO)
-		return
-	end
-	vim.ui.select(list, { prompt = "Select Claude conversation" }, function(choice)
-		if not choice then
+function M.history()
+	vim.ui.input({ prompt = "Enter Claude session id to resume: " }, function(session_id)
+		if not session_id or session_id == "" then
 			return
 		end
-		local lines = require("claude-summon.history").load(choice)
-		if lines then
-			M.open(chat.current_model())
-			render.load_history(lines)
-			vim.notify("Loaded conversation: " .. choice, vim.log.levels.INFO)
-		end
+		chat.resume(session_id)
+		M.open(chat.current_model())
+		render.load_history({ "# Continuing session " .. session_id, "" })
+		vim.notify("Resuming Claude session " .. session_id, vim.log.levels.INFO)
 	end)
 end
 

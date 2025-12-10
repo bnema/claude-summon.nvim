@@ -35,6 +35,10 @@ M.defaults = {
 		border = "rounded",
 	},
 
+	-- History (CLI)
+	cli_history_path = nil, -- No direct file scraping; use SDK resume/continue
+	project_root = vim.loop.cwd(),
+
 	-- Keymaps
 	keymaps = {
 		send = { "<C-CR>", "<leader>as" },
