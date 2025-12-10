@@ -117,6 +117,11 @@ function M.diff_code()
 	ui.diff_code()
 end
 
+function M.preview_code()
+	ensure_setup()
+	ui.preview_code()
+end
+
 function M.save_conversation()
 	ensure_setup()
 	ui.save()
