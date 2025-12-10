@@ -11,6 +11,7 @@ local state = {
 	spinner_idx = 1,
 	spinner = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" },
 	timer = nil,
+	pending_line = "",
 }
 
 local function stop_spinner()
@@ -49,6 +50,7 @@ function M.setup(_cfg) end
 function M.start_stream(payload)
 	state.model = payload.model or "claude"
 	state.thinking = ""
+	state.pending_line = ""
 	panel.clear_response()
 	start_spinner()
 end
@@ -62,6 +64,18 @@ local function extract_text(msg)
 	return msg.delta or msg.text or msg.message or msg.content or msg.result or ""
 end
 
+local function append_text(chunk)
+	if chunk == "" then
+		return
+	end
+	local combined = state.pending_line .. chunk
+	local parts = vim.split(combined, "\n", { plain = true })
+	state.pending_line = table.remove(parts) or ""
+	if #parts > 0 then
+		panel.append(parts)
+	end
+end
+
 function M.on_message(msg)
 	-- First real message ends the thinking phase.
 	stop_spinner()
@@ -69,7 +83,7 @@ function M.on_message(msg)
 	if text == "" then
 		return
 	end
-	panel.append(vim.split(text, "\n", { plain = true }))
+	append_text(text)
 end
 
 function M.on_error(err)
@@ -80,21 +94,31 @@ end
 
 function M.on_complete()
 	stop_spinner()
+	if state.pending_line ~= "" then
+		panel.append({ state.pending_line })
+		state.pending_line = ""
+	end
 end
 
 function M.on_stop()
 	stop_spinner()
+	state.pending_line = ""
 end
 
 function M.clear()
 	stop_spinner()
+	state.pending_line = ""
 	panel.clear_response()
 end
 
 function M.apply_code() end
 
-function M.save() end
+function M.save()
+	vim.notify("Save conversation not yet implemented", vim.log.levels.INFO)
+end
 
-function M.export() end
+function M.export()
+	vim.notify("Export not yet implemented", vim.log.levels.INFO)
+end
 
 return M
