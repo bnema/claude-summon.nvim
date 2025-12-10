@@ -6,6 +6,7 @@ local context = require("claude-summon.context")
 local chat = require("claude-summon.chat")
 local ui = require("claude-summon.ui")
 local keymaps = require("claude-summon.keymaps")
+local history = require("claude-summon.history")
 
 local M = {}
 local state = {
@@ -31,6 +32,7 @@ function M.setup(opts)
 	chat.setup(state.config)
 	ui.setup(state.config)
 	keymaps.setup(state.config, M)
+	history.setup(state.config)
 	return state.config
 end
 

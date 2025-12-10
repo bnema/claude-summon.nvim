@@ -132,4 +132,8 @@ function M.set_footer(text)
 	end
 end
 
+function M.response_buf()
+	return state.response_buf
+end
+
 return M

@@ -2,6 +2,7 @@
 
 local uv = vim.loop
 local panel = require("claude-summon.ui.panel")
+local history = require("claude-summon.history")
 
 local M = {}
 
@@ -111,14 +112,78 @@ function M.clear()
 	panel.clear_response()
 end
 
-function M.apply_code() end
+local function last_code_block()
+	local buf = panel.response_buf()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		return nil
+	end
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local block = {}
+	local collecting = false
+
+	for i = #lines, 1, -1 do
+		local line = lines[i]
+		if line:match("^%s*```") then
+			if collecting then
+				-- Found start fence
+				local reversed = {}
+				for j = #block, 1, -1 do
+					table.insert(reversed, block[j])
+				end
+				return reversed
+			else
+				collecting = true
+			end
+		else
+			if collecting then
+				table.insert(block, line)
+			end
+		end
+	end
+
+	return nil
+end
+
+function M.apply_code()
+	local block = last_code_block()
+	if not block or #block == 0 then
+		vim.notify("No code block found in response", vim.log.levels.WARN)
+		return
+	end
+
+	local buf = vim.api.nvim_get_current_buf()
+	local row = vim.api.nvim_win_get_cursor(0)[1]
+	vim.api.nvim_buf_set_lines(buf, row, row, false, block)
+
+	vim.fn.setreg('"', table.concat(block, "\n"))
+	vim.fn.setreg("+", table.concat(block, "\n"))
+	vim.notify(("Inserted code block (%d lines)"):format(#block), vim.log.levels.INFO)
+end
 
 function M.save()
-	vim.notify("Save conversation not yet implemented", vim.log.levels.INFO)
+	local buf = panel.response_buf()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("No response buffer to save", vim.log.levels.WARN)
+		return
+	end
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local path = history.save(nil, lines)
+	if path then
+		vim.notify("Saved conversation to " .. path, vim.log.levels.INFO)
+	end
 end
 
 function M.export()
-	vim.notify("Export not yet implemented", vim.log.levels.INFO)
+	local buf = panel.response_buf()
+	if not buf or not vim.api.nvim_buf_is_valid(buf) then
+		vim.notify("No response buffer to export", vim.log.levels.WARN)
+		return
+	end
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local path = history.export_markdown(nil, lines)
+	if path then
+		vim.notify("Exported conversation to " .. path, vim.log.levels.INFO)
+	end
 end
 
 return M
