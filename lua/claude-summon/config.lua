@@ -20,6 +20,14 @@ M.defaults = {
 	context_lines = 20,
 	include_related_files = true,
 
+	-- Permissions / tools
+	permission_mode = "default", -- default | acceptEdits | bypassPermissions
+	permission_callback = nil,
+	allowed_tools = {},
+	disallowed_tools = {},
+	mcp_config_path = nil,
+	permission_tool = nil,
+
 	-- UI
 	panel = {
 		position = "right",
@@ -60,6 +68,20 @@ local function validate_panel(panel)
 	end
 end
 
+local function validate_list_of_strings(value, name)
+	if value == nil then
+		return
+	end
+	if type(value) ~= "table" then
+		error(("claude-summon: %s must be a list of strings"):format(name))
+	end
+	for _, v in ipairs(value) do
+		if type(v) ~= "string" then
+			error(("claude-summon: %s entries must be strings"):format(name))
+		end
+	end
+end
+
 function M.merge(user_opts)
 	local cfg = vim.tbl_deep_extend("force", {}, M.defaults, user_opts or {})
 
@@ -76,6 +98,8 @@ function M.merge(user_opts)
 
 	validate_panel(cfg.panel or {})
 	validate_keymaps(cfg.keymaps or {})
+	validate_list_of_strings(cfg.allowed_tools, "allowed_tools")
+	validate_list_of_strings(cfg.disallowed_tools, "disallowed_tools")
 
 	return cfg
 end

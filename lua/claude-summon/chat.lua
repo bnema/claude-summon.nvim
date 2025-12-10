@@ -7,6 +7,7 @@ local state = {
 	model = nil,
 	session_id = nil,
 	handle = nil,
+	plugin_manager = nil,
 }
 
 local function ensure_sdk_path(path)
@@ -76,7 +77,33 @@ function M.setup(cfg)
 	ensure_sdk_path(cfg.sdk_path)
 
 	local claude = require("claude-code")
-	state.client = claude.setup({ bin_path = cfg.bin_path })
+	local default_opts = {
+		permission_mode = cfg.permission_mode,
+		permission_callback = cfg.permission_callback,
+		allowed_tools = cfg.allowed_tools,
+		disallowed_tools = cfg.disallowed_tools,
+		mcp_config_path = cfg.mcp_config_path,
+		permission_tool = cfg.permission_tool,
+	}
+
+	if not cfg.plugin_manager and cfg.disallowed_tools and #cfg.disallowed_tools > 0 then
+		local blocklist = {}
+		for _, tool in ipairs(cfg.disallowed_tools) do
+			blocklist[tool] = "blocked by claude-summon"
+		end
+		local pm = claude.new_plugin_manager()
+		pm:register(claude.ToolFilterPlugin.new(blocklist))
+		state.plugin_manager = pm
+		default_opts.plugin_manager = pm
+	else
+		state.plugin_manager = cfg.plugin_manager
+		default_opts.plugin_manager = cfg.plugin_manager
+	end
+
+	state.client = claude.setup({
+		bin_path = cfg.bin_path,
+		default_options = default_opts,
+	})
 	state.model = cfg.default_model or "sonnet"
 end
 
@@ -114,6 +141,9 @@ function M.send(payload)
 	local opts = { model_alias = model_alias }
 	if state.session_id then
 		opts.resume_id = state.session_id
+	end
+	if state.plugin_manager then
+		opts.plugin_manager = state.plugin_manager
 	end
 
 	state.handle = state.client:stream_prompt(prompt, opts, function(msg)
