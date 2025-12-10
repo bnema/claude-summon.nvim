@@ -108,6 +108,10 @@ function M.diff_code()
 	actions.diff_code()
 end
 
+function M.preview_code()
+	actions.preview_code()
+end
+
 function M.save()
 	render.save()
 end
