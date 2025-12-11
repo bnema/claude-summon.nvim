@@ -179,37 +179,12 @@ local function format_tool_use(block)
 	return string.format("\n%s %s", icon, name)
 end
 
--- Format tool_result message
+-- Format tool_result message (minimal - just status icon)
 local function format_tool_result(block)
-	local content = block.content or ""
 	local is_error = block.is_error
-
-	if type(content) == "table" then
-		content = normalize_text(content) or vim.inspect(content)
-	end
-
-	-- Truncate long results
-	local max_len = 500
-	if #content > max_len then
-		content = content:sub(1, max_len) .. "\n... (truncated)"
-	end
-
-	local icon = is_error and icons.error or icons.result
-	if content == "" then
-		return string.format("  %s (empty)", icon)
-	end
-
-	-- Indent result lines
-	local lines = vim.split(content, "\n", { plain = true })
-	local indented = {}
-	for i, line in ipairs(lines) do
-		if i == 1 then
-			table.insert(indented, string.format("  %s %s", icon, line))
-		else
-			table.insert(indented, "    " .. line)
-		end
-	end
-	return table.concat(indented, "\n")
+	local icon = is_error and icons.error or icons.success
+	-- Just show a simple status indicator, no content details
+	return string.format("  %s", icon)
 end
 
 -- Format a message block based on its type
@@ -240,18 +215,58 @@ local function format_message(msg)
 					state.streamed_message_ids[msg_id] = true
 				end
 			end
+			-- Handle text deltas for streaming text
 			if event_type == "content_block_delta" then
 				local delta = event.delta
-				if delta and delta.type == "text_delta" then
-					return delta.text or ""
+				if delta then
+					if delta.type == "text_delta" then
+						local text = delta.text or ""
+						-- Indent subagent output for visual distinction
+						if msg.parent_tool_use_id and text ~= "" then
+							-- Only indent at line starts, not mid-line
+							text = text:gsub("\n", "\n  ")
+						end
+						return text
+					elseif delta.type == "thinking_delta" then
+						-- Update thinking status instead of displaying
+						state.thinking = delta.thinking or ""
+						render_status()
+						return ""
+					end
 				end
 			end
-			-- Skip other stream_event types (content_block_start, message_stop, etc.)
+			-- Show tool_use blocks as they start (real-time tool visibility)
+			if event_type == "content_block_start" then
+				local content_block = event.content_block
+				if content_block and content_block.type == "tool_use" then
+					local prefix = msg.parent_tool_use_id and "  " or "" -- Indent subagent tools
+					return prefix .. format_tool_use(content_block)
+				end
+			end
 		end
 		return ""
 	end
 
-	-- Skip assistant messages if we already streamed their content
+	-- Skip system and result messages (metadata, not content)
+	if msg.type == "system" or msg.type == "result" then
+		return ""
+	end
+
+	-- Skip user messages (they just contain tool_result blocks which we handle minimally)
+	if msg.type == "user" then
+		return ""
+	end
+
+	-- Skip assistant messages if we already streamed their content via deltas
+	-- Assistant messages have ID at msg.message.id
+	if msg.type == "assistant" then
+		local nested_id = msg.message and msg.message.id
+		if nested_id and state.streamed_message_ids[nested_id] then
+			return "" -- Already displayed via stream events
+		end
+	end
+
+	-- Skip other messages by ID if already streamed
 	local msg_id = msg.id or (msg.message and msg.message.id)
 	if msg_id and state.streamed_message_ids[msg_id] then
 		return ""
@@ -279,7 +294,12 @@ local function format_message(msg)
 	end
 
 	-- Handle content array (can contain text, tool_use, tool_result blocks)
+	-- For assistant messages, content is at msg.message.content
+	-- For other messages, content is at msg.content
 	local content = msg.content
+	if not content and msg.message and type(msg.message.content) == "table" then
+		content = msg.message.content
+	end
 	if type(content) == "table" then
 		local parts = {}
 		for _, block in ipairs(content) do
@@ -325,12 +345,12 @@ local function append_text(chunk)
 end
 
 function M.on_message(msg)
-	-- First real message ends the thinking phase.
-	stop_spinner()
 	local text = format_message(msg)
 	if text == "" then
 		return
 	end
+	-- Only stop spinner when we have actual content to display
+	stop_spinner()
 	append_text(text)
 end
 
