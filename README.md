@@ -1,6 +1,6 @@
 # claude-summon.nvim
 
-> ⚠️ Alpha preview — very early, expect breakage.
+> ⚠️ Alpha preview aka bug festival, expect breakage.
 
 Summon Claude Code from your comments in Neovim via the `claude-code-lua` SDK. Streaming and prompt delivery are still unstable.
 
