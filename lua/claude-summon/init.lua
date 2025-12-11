@@ -33,6 +33,10 @@ function M.setup(opts)
 	ui.setup(state.config)
 	keymaps.setup(state.config, M)
 	history.setup(state.config)
+
+	-- Enable real-time trigger detection by default
+	trigger.start_watch(state.config.keymaps.send)
+
 	return state.config
 end
 
@@ -135,6 +139,21 @@ end
 function M.history()
 	ensure_setup()
 	ui.history()
+end
+
+-- Trigger watch functions for real-time detection
+function M.toggle_watch()
+	local cfg = ensure_setup()
+	trigger.toggle_watch(cfg.keymaps.send)
+end
+
+function M.start_watch()
+	local cfg = ensure_setup()
+	trigger.start_watch(cfg.keymaps.send)
+end
+
+function M.stop_watch()
+	trigger.stop_watch()
 end
 
 return M
