@@ -9,16 +9,19 @@ Summon Claude Code from your comments in Neovim via the `claude-code-lua` SDK. S
 - Known issues: streaming may buffer until completion and user prompts can be lost (see `/issue/2025-streaming-and-prompt-loss.md`).
 - Designed for local experimentation only.
 
-## Quick install (dev)
-Lazy.nvim example:
+## Installation
+
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
-  dir = "/home/brice/projects/claude-summon.nvim",
-  name = "claude-summon.nvim",
+  "bnema/claude-summon.nvim",
+  dependencies = {
+    "bnema/claude-agent-sdk-lua",
+  },
   config = function()
     require("claude-summon").setup({
-      sdk_path = "/home/brice/projects/claude-code-lua",
+      -- Optional: customize keymaps, model defaults, etc.
     })
   end,
 }
@@ -38,4 +41,3 @@ Default keymaps (normal mode):
 ## Requirements
 - Neovim 0.10+
 - Claude Code CLI in PATH
-- `claude-code-lua` SDK available at the configured `sdk_path`

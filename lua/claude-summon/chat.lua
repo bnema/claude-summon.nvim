@@ -10,24 +10,6 @@ local state = {
 	plugin_manager = nil,
 }
 
-local function ensure_sdk_path(path)
-	if not path or path == "" then
-		return
-	end
-
-	local base = vim.fn.expand(path)
-	local lua_paths = {
-		base .. "/lua/?.lua",
-		base .. "/lua/?/init.lua",
-	}
-
-	for _, lua_path in ipairs(lua_paths) do
-		if not string.find(package.path, lua_path, 1, true) then
-			package.path = package.path .. ";" .. lua_path
-		end
-	end
-end
-
 local function build_prompt(message, context)
 	local parts = {}
 
@@ -81,8 +63,6 @@ local function build_prompt(message, context)
 end
 
 function M.setup(cfg)
-	ensure_sdk_path(cfg.sdk_path)
-
 	local claude = require("claude-code")
 	local default_opts = {
 		permission_mode = cfg.permission_mode,

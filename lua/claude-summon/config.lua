@@ -2,10 +2,22 @@
 
 local M = {}
 
+-- Create a permission callback that uses the permission UI
+-- Returns nil (async) and calls respond_fn with (allowed, save, updated_input)
+local function create_permission_callback()
+	return function(tool_name, tool_input, respond_fn)
+		-- Lazy require to avoid circular deps
+		local permission_ui = require("claude-summon.ui.permission")
+		vim.schedule(function()
+			permission_ui.show(tool_name, tool_input, respond_fn)
+		end)
+		return nil -- Async, callback will be called
+	end
+end
+
 M.defaults = {
 	-- SDK
 	bin_path = "claude",
-	sdk_path = vim.fn.expand("~/projects/claude-code-lua"),
 
 	-- Models
 	default_model = "sonnet",
@@ -22,7 +34,7 @@ M.defaults = {
 
 	-- Permissions / tools
 	permission_mode = "default", -- default | acceptEdits | bypassPermissions
-	permission_callback = nil,
+	permission_callback = "default", -- "default" uses UI, nil auto-allows, or custom function
 	allowed_tools = {},
 	disallowed_tools = {},
 	mcp_config_path = nil,
@@ -95,7 +107,6 @@ function M.merge(user_opts)
 
 	vim.validate({
 		bin_path = { cfg.bin_path, "string" },
-		sdk_path = { cfg.sdk_path, "string" },
 		default_model = { cfg.default_model, "string" },
 		model_map = { cfg.model_map, "table" },
 		context_lines = { cfg.context_lines, "number" },
@@ -108,6 +119,11 @@ function M.merge(user_opts)
 	validate_keymaps(cfg.keymaps or {})
 	validate_list_of_strings(cfg.allowed_tools, "allowed_tools")
 	validate_list_of_strings(cfg.disallowed_tools, "disallowed_tools")
+
+	-- Convert "default" permission_callback to actual function
+	if cfg.permission_callback == "default" then
+		cfg.permission_callback = create_permission_callback()
+	end
 
 	return cfg
 end
